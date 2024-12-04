@@ -1,0 +1,213 @@
+import os
+import pandas as pd
+import requests
+import time
+import random
+from bs4 import BeautifulSoup
+
+# Paths
+csv_combined = (
+    "C:/Users/María/Dropbox/vscode/PYTHON/PY/CLIMB/regions_csv/_combined_crags.csv"
+)
+output_file = csv_combined.replace("_combined_crags.csv", "_crag_names.csv")
+log_file = "data_usage_log.txt"
+proxy_file = "PY/CLIMB/valid_proxies.txt"
+
+
+# Load proxies from file
+def load_proxies():
+    try:
+        with open(proxy_file, "r") as f:
+            return f.read().splitlines()
+    except FileNotFoundError:
+        print(f"Proxy file not found: {proxy_file}")
+        return []
+
+
+# List of user agents to rotate
+user_agents = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:89.0) Gecko/20100101 Firefox/89.0",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0.3 Safari/605.1.15",
+]
+
+
+# Get a random proxy
+def get_random_proxy(proxies):
+    if not proxies:
+        return {}
+    proxy = random.choice(proxies)
+    parts = proxy.split(":")
+    if len(parts) == 4:
+        host, port, username, password = parts
+        proxy_url = f"http://{username}:{password}@{host}:{port}"
+        return {"http": proxy_url, "https": proxy_url}
+    else:
+        print("Invalid proxy format")
+        return {}
+
+
+# Log data usage
+def log_data_usage(url, data_size):
+    with open(log_file, "a") as f:
+        f.write(f"URL: {url} - Data Size: {data_size / (1024 ** 2):.2f} MB\n")
+
+
+# Summarize data usage
+def summarize_data_usage():
+    total_size_mb = 0
+    if os.path.exists(log_file):
+        with open(log_file, "r") as f:
+            for line in f:
+                if "Data Size:" in line:
+                    size_str = line.split("Data Size:")[1].strip().split()[0]
+                    total_size_mb += float(size_str)
+    total_size_gb = total_size_mb / 1024
+    print(f"Total Data Usage: {total_size_mb:.2f} MB ({total_size_gb:.2f} GB)")
+
+
+# Function to scrape the crag name from a URL
+def scrape_crag_name(url, proxies):
+    headers = {"User-Agent": random.choice(user_agents)}
+    retries = 3
+    for attempt in range(retries):
+        proxy = get_random_proxy(proxies)
+        try:
+            print(
+                f"Scraping URL: {url} (Attempt {attempt + 1}/{retries}) using proxy: {proxy.get('http', 'None')}"
+            )
+            response = requests.get(url, headers=headers, proxies=proxy, timeout=30)
+            response.raise_for_status()
+
+            data_size = len(response.content)
+            log_data_usage(url, data_size)
+
+            soup = BeautifulSoup(response.text, "html.parser")
+            region_name = soup.find("span", class_="heading__t")
+
+            if region_name:
+                region_name_text = region_name.get_text().strip()
+                print(f"Region name found: {region_name_text}")
+                return region_name_text
+            else:
+                print(f"Region name not found for {url}.")
+                return "unknown"
+
+        except requests.exceptions.RequestException as e:
+            print(f"Error while accessing {url}: {e}")
+            time.sleep(30)  # Short delay before retrying
+
+    print(f"Failed to scrape {url} after {retries} attempts.")
+    return "unknown"
+
+
+# Function to process URLs within a specified range
+def process_urls(start_index=None, end_index=None):
+    # Load existing data
+    if os.path.exists(output_file):
+        try:
+            df_output = pd.read_csv(output_file, sep="\t", on_bad_lines="skip")
+            if set(df_output.columns) != {
+                "Initial Region URL",
+                "Crag URL",
+                "Region Name",
+            }:
+                print("Output file columns are incorrect. Reinitializing DataFrame.")
+                df_output = pd.DataFrame(
+                    columns=["Initial Region URL", "Crag URL", "Region Name"]
+                )
+        except pd.errors.ParserError as e:
+            print(f"Error parsing output file: {e}")
+            df_output = pd.DataFrame(
+                columns=["Initial Region URL", "Crag URL", "Region Name"]
+            )
+    else:
+        df_output = pd.DataFrame(
+            columns=["Initial Region URL", "Crag URL", "Region Name"]
+        )
+
+    # Load URLs to scrape
+    try:
+        df = pd.read_csv(csv_combined, sep="\t", on_bad_lines="skip")
+    except pd.errors.ParserError as e:
+        print(f"Error parsing CSV file: {e}")
+        return
+
+    if start_index is None:
+        start_index = 0
+    if end_index is None:
+        end_index = len(df)
+
+    proxies = load_proxies()
+    updated_data_dict = {}
+
+    for index in range(start_index, end_index):
+        row = df.iloc[index]
+        initial_region_url = row["Initial Region URL"]
+        crag_url = row["Crag URL"]
+        existing_row = df_output[df_output["Crag URL"] == crag_url]
+
+        if not existing_row.empty:
+            if existing_row.iloc[0]["Region Name"] == "unknown":
+                print(
+                    f"Re-scraping URL: {crag_url} because it was marked as 'unknown'."
+                )
+            else:
+                print(f"Skipping already processed URL: {crag_url}")
+                continue
+
+        region_name = scrape_crag_name(crag_url, proxies)
+        updated_data_dict[crag_url] = {
+            "Initial Region URL": initial_region_url,
+            "Region Name": region_name,
+        }
+
+        print(f"Processed {crag_url}. Region name: {region_name}")
+
+    if updated_data_dict:
+        # Convert the updated data dictionary into a DataFrame
+        new_df = pd.DataFrame.from_dict(updated_data_dict, orient="index").reset_index()
+        new_df.columns = ["Crag URL", "Initial Region URL", "Region Name"]
+
+        # Find URLs that are completely new (i.e., not present in df_output)
+        new_entries_df = new_df[~new_df["Crag URL"].isin(df_output["Crag URL"])]
+
+        # Append new URLs to the existing df_output
+        if not new_entries_df.empty:
+            df_output = pd.concat([df_output, new_entries_df], ignore_index=True)
+
+        # Now, update existing rows where region names are "unknown"
+        df_output = pd.merge(
+            df_output, new_df, on="Crag URL", how="left", suffixes=("", "_new")
+        )
+
+        # Ensure "Initial Region URL" and "Region Name" are updated correctly
+        df_output["Initial Region URL"] = df_output[
+            "Initial Region URL_new"
+        ].combine_first(df_output["Initial Region URL"])
+        df_output["Region Name"] = df_output["Region Name_new"].combine_first(
+            df_output["Region Name"]
+        )
+
+        # Drop temporary "_new" columns used for merging
+        df_output.drop(
+            columns=["Initial Region URL_new", "Region Name_new"], inplace=True
+        )
+
+        # Save updated DataFrame to CSV
+        df_output.to_csv(output_file, index=False, sep="\t")
+        print("New data appended and saved.")
+
+    print(
+        f"URLs from {start_index} to {end_index} processed. Output saved to {output_file}"
+    )
+
+    summarize_data_usage()
+
+
+# Specify the range of URLs to process
+start_index = 288  # Change this to the desired start index
+end_index = 297  # Change this to the desired end index
+
+# Run the process
+process_urls(start_index, end_index)
