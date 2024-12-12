@@ -6,13 +6,11 @@ import random
 from bs4 import BeautifulSoup
 
 # Paths
-csv_combined = (
-    "C:/Users/María/Dropbox/vscode/PYTHON/PY/CLIMB/regions_csv/_combined_crags.csv"
-)
-output_file = csv_combined.replace("_combined_crags.csv", "_crag_coordinates.csv")
-log_file = "data_usage_log.txt"
-proxy_file = "PY/CLIMB/valid_proxies.txt"
+base_dir = os.path.dirname(os.path.abspath(__file__))
 
+csv_combined = os.path.join(base_dir, "regions_csv", "_combined_crags.csv")
+output_file = csv_combined.replace("_combined_crags.csv", "_crag_names.csv") # the new outut path, replacing the name
+proxy_file = os.path.join(base_dir, "valid_proxies.txt")
 
 # Load proxies from file
 def load_proxies():

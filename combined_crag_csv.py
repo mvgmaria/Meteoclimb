@@ -2,7 +2,9 @@ import os
 import pandas as pd
 
 # Directory where all your individual CSV files are stored
-csv_directory = r"C:\Users\María\Dropbox\vscode\PYTHON\PY\CLIMB\regions_csv"
+base_dir = os.path.dirname(os.path.abspath(__file__))
+
+csv_directory = os.path.join(base_dir, "regions_csv")
 
 # Initialize an empty DataFrame to hold all data
 all_data = pd.DataFrame()

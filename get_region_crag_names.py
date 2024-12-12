@@ -6,12 +6,12 @@ import random
 from bs4 import BeautifulSoup
 
 # Paths
-csv_combined = (
-    "C:/Users/María/Dropbox/vscode/PYTHON/PY/CLIMB/regions_csv/_combined_crags.csv"
-)
-output_file = csv_combined.replace("_combined_crags.csv", "_crag_names.csv")
-log_file = "data_usage_log.txt"
-proxy_file = "PY/CLIMB/valid_proxies.txt"
+
+base_dir = os.path.dirname(os.path.abspath(__file__))
+
+csv_combined = os.path.join(base_dir, "regions_csv", "_combined_crags.csv")
+output_file = csv_combined.replace("_combined_crags.csv", "_crag_names.csv") # the new outut path, replacing the name
+proxy_file = os.path.join(base_dir, "valid_proxies.txt")
 
 
 # Load proxies from file
@@ -45,26 +45,6 @@ def get_random_proxy(proxies):
     else:
         print("Invalid proxy format")
         return {}
-
-
-# Log data usage
-def log_data_usage(url, data_size):
-    with open(log_file, "a") as f:
-        f.write(f"URL: {url} - Data Size: {data_size / (1024 ** 2):.2f} MB\n")
-
-
-# Summarize data usage
-def summarize_data_usage():
-    total_size_mb = 0
-    if os.path.exists(log_file):
-        with open(log_file, "r") as f:
-            for line in f:
-                if "Data Size:" in line:
-                    size_str = line.split("Data Size:")[1].strip().split()[0]
-                    total_size_mb += float(size_str)
-    total_size_gb = total_size_mb / 1024
-    print(f"Total Data Usage: {total_size_mb:.2f} MB ({total_size_gb:.2f} GB)")
-
 
 # Function to scrape the crag name from a URL
 def scrape_crag_name(url, proxies):
@@ -201,8 +181,6 @@ def process_urls(start_index=None, end_index=None):
     print(
         f"URLs from {start_index} to {end_index} processed. Output saved to {output_file}"
     )
-
-    summarize_data_usage()
 
 
 # Specify the range of URLs to process
