@@ -59,9 +59,6 @@ def scrape_crag_name(url, proxies):
             response = requests.get(url, headers=headers, proxies=proxy, timeout=30)
             response.raise_for_status()
 
-            data_size = len(response.content)
-            log_data_usage(url, data_size)
-
             soup = BeautifulSoup(response.text, "html.parser")
             region_name = soup.find("span", class_="heading__t")
 

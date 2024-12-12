@@ -44,26 +44,6 @@ def get_random_proxy(proxies):
         print("Invalid proxy format")
         return {}
 
-
-# Log data usage
-def log_data_usage(url, data_size):
-    with open(log_file, "a") as f:
-        f.write(f"URL: {url} - Data Size: {data_size / (1024 ** 2):.2f} MB\n")
-
-
-# Summarize data usage
-def summarize_data_usage():
-    total_size_mb = 0
-    if os.path.exists(log_file):
-        with open(log_file, "r") as f:
-            for line in f:
-                if "Data Size:" in line:
-                    size_str = line.split("Data Size:")[1].strip().split()[0]
-                    total_size_mb += float(size_str)
-    total_size_gb = total_size_mb / 1024
-    print(f"Total Data Usage: {total_size_mb:.2f} MB ({total_size_gb:.2f} GB)")
-
-
 # Function to scrape latitude and longitude from a URL
 def scrape_coordinates_and_region_name(url, proxies):
     headers = {"User-Agent": random.choice(user_agents)}
@@ -76,9 +56,6 @@ def scrape_coordinates_and_region_name(url, proxies):
             )
             response = requests.get(url, headers=headers, proxies=proxy, timeout=30)
             response.raise_for_status()
-
-            data_size = len(response.content)
-            log_data_usage(url, data_size)
 
             soup = BeautifulSoup(response.text, "html.parser")
 
@@ -256,7 +233,6 @@ def process_urls(start_index=None, end_index=None):
         f"URLs from {start_index} to {end_index} processed. Output saved to {output_file}"
     )
 
-    summarize_data_usage()
 
 
 # Specify the range of URLs to process
