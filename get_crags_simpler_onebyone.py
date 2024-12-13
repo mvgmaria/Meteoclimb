@@ -59,23 +59,13 @@ def scrape_urls(urls_to_scrape):
                         else:
                             print("No type span found in url:", url)  # Debug print
 
-            except (requests.ConnectionError, requests.Timeout) as e:
-                print(
-                    f"Error while accessing {url}: {e}. Retrying... ({attempt + 1}/{retries})"
-                )
+            except requests.RequestException as e:
+                print(f"Error while accessing {url}: {e}")
                 time.sleep(delay)
-            except requests.exceptions.HTTPError as e:
-                if page.status_code == 503:
-                    print(
-                        f"503 Error while accessing {url}: {e}. Retrying... ({attempt + 1}/{retries})"
-                    )
-                    time.sleep(delay)
-                else:
-                    print(f"HTTP error occurred while accessing {url}: {e}")
-                    break
+            
             except Exception as e:
                 print(f"An unexpected error occurred while accessing {url}: {e}")
-                break
+                time.sleep(delay)
         else:
             print(f"Failed to retrieve data from {url} after {retries} attempts.")
             failed_urls.append(url)
@@ -110,9 +100,9 @@ def main():
 
     # Save crag URLs to CSV
     df_crags = pd.DataFrame(crag_data)
-    region_name = initial_region_url.split("/")[
-        -1
-    ]  # the [-1] is referring to the last part of the slice, typically the name of the crag that is part of the url
+    # this gets an incorrect name sometimes, i should get it from the regions csv, with some light scraping
+    region_name = initial_region_url.split("/")[-1]  
+    # the [-1] is referring to the last part of the slice, typically the name of the crag that is part of the url
     crag_file = os.path.join(output_dir, f"{region_name}.csv")
     df_crags.to_csv(crag_file, index=False, sep="\t")
     print(f"Crag URLs saved to: {crag_file}")

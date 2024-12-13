@@ -50,6 +50,8 @@ def get_random_proxy(proxies):
 def scrape_crag_name(url, proxies):
     headers = {"User-Agent": random.choice(user_agents)}
     retries = 3
+    delay = 30
+    
     for attempt in range(retries):
         proxy = get_random_proxy(proxies)
         try:
@@ -71,8 +73,12 @@ def scrape_crag_name(url, proxies):
                 return "unknown"
 
         except requests.exceptions.RequestException as e:
-            print(f"Error while accessing {url}: {e}")
-            time.sleep(30)  # Short delay before retrying
+                print(f"Error while accessing {url}: {e}")
+                time.sleep(delay)
+            
+        except Exception as e:
+            print(f"An unexpected error occurred while accessing {url}: {e}")
+            time.sleep(delay)
 
     print(f"Failed to scrape {url} after {retries} attempts.")
     return "unknown"
