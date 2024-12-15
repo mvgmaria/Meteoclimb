@@ -9,8 +9,11 @@ from bs4 import BeautifulSoup
 base_dir = os.path.dirname(os.path.abspath(__file__))
 
 csv_combined = os.path.join(base_dir, "regions_csv", "_combined_crags.csv")
-output_file = csv_combined.replace("_combined_crags.csv", "_crag_names.csv") # the new outut path, replacing the name
+output_file = csv_combined.replace(
+    "_combined_crags.csv", "_crag_names.csv"
+)  # the new outut path, replacing the name
 proxy_file = os.path.join(base_dir, "valid_proxies.txt")
+
 
 # Load proxies from file
 def load_proxies():
@@ -44,12 +47,13 @@ def get_random_proxy(proxies):
         print("Invalid proxy format")
         return {}
 
+
 # Function to scrape latitude and longitude from a URL
 def scrape_coordinates_and_region_name(url, proxies):
     headers = {"User-Agent": random.choice(user_agents)}
     retries = 3
     delay = 30
-    
+
     for attempt in range(retries):
         proxy = get_random_proxy(proxies)
         try:
@@ -79,13 +83,12 @@ def scrape_coordinates_and_region_name(url, proxies):
             return latitude, longitude, region_name
 
         except requests.exceptions.RequestException as e:
-                print(f"Error while accessing {url}: {e}")
-                time.sleep(delay)
-            
+            print(f"Error while accessing {url}: {e}")
+            time.sleep(delay)
+
         except Exception as e:
             print(f"An unexpected error occurred while accessing {url}: {e}")
             time.sleep(delay)
-
 
     print(f"Failed to scrape {url} after {retries} attempts.")
     return "unknown", "unknown", "unknown"
@@ -239,7 +242,6 @@ def process_urls(start_index=None, end_index=None):
     print(
         f"URLs from {start_index} to {end_index} processed. Output saved to {output_file}"
     )
-
 
 
 # Specify the range of URLs to process

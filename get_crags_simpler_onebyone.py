@@ -62,7 +62,7 @@ def scrape_urls(urls_to_scrape):
             except requests.RequestException as e:
                 print(f"Error while accessing {url}: {e}")
                 time.sleep(delay)
-            
+
             except Exception as e:
                 print(f"An unexpected error occurred while accessing {url}: {e}")
                 time.sleep(delay)
@@ -98,13 +98,11 @@ def main():
     # Prepare data for saving
     crag_data = pd.DataFrame(crag_urls_list, columns=["Crag URL"])
 
-    # Save crag URLs to CSV
-    df_crags = pd.DataFrame(crag_data)
     # this gets an incorrect name sometimes, i should get it from the regions csv, with some light scraping
-    region_name = initial_region_url.split("/")[-1]  
+    region_name = initial_region_url.split("/")[-1]
     # the [-1] is referring to the last part of the slice, typically the name of the crag that is part of the url
     crag_file = os.path.join(output_dir, f"{region_name}.csv")
-    df_crags.to_csv(crag_file, index=False, sep="\t")
+    crag_data.to_csv(crag_file, index=False, sep="\t")
     print(f"Crag URLs saved to: {crag_file}")
 
     # Save failed URLs to CSV
@@ -113,9 +111,8 @@ def main():
         df_failed = pd.read_csv(failed_file)
         df_failed_new = pd.DataFrame({"Failed URLs": failed_urls})
         df_failed_combined = (
-            pd.concat([df_failed, df_failed_new])
-            .drop_duplicates()
-            .reset_index(drop=True)
+            pd.concat([df_failed, df_failed_new], ignore_index=True).drop_duplicates()
+            # here .reset_index(drop=True) is good practice, but we could just "ignore_index=True" as the second parameter of pd.concat
         )
     else:
         df_failed_combined = pd.DataFrame({"Failed URLs": failed_urls})
