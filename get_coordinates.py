@@ -15,7 +15,7 @@ output_file = csv_combined.replace(
 proxy_file = os.path.join(base_dir, "valid_proxies.txt")
 
 
-# Load proxies from file
+# Load proxies from file (import get_region_crags_names, and reuse function)
 def load_proxies():
     try:
         with open(proxy_file, "r") as f:
@@ -41,6 +41,7 @@ def get_random_proxy(proxies):
     parts = proxy.split(":")
     if len(parts) == 4:
         host, port, username, password = parts
+        # the following two lines seem to be duplicating the http header, but it is not, it is protocol for proxy usage
         proxy_url = f"http://{username}:{password}@{host}:{port}"
         return {"http": proxy_url, "https": proxy_url}
     else:
@@ -61,11 +62,11 @@ def scrape_coordinates_and_region_name(url, proxies):
                 f"Scraping URL: {url} (Attempt {attempt + 1}/{retries}) using proxy: {proxy.get('http', 'None')}"
             )
             response = requests.get(url, headers=headers, proxies=proxy, timeout=30)
-            response.raise_for_status()
+            response.raise_for_status()  # good practice
 
             soup = BeautifulSoup(response.text, "html.parser")
 
-            # Extract latitude and longitude
+            # Extract latitude and longitude (it is written in a dictionary form because there ir no support for property attribute in the case of meta tag (contrary to span class_))
             latitude_tag = soup.find("meta", {"property": "place:location:latitude"})
             longitude_tag = soup.find("meta", {"property": "place:location:longitude"})
             latitude = latitude_tag["content"] if latitude_tag else "unknown"
@@ -98,8 +99,12 @@ def scrape_coordinates_and_region_name(url, proxies):
 def process_urls(start_index=None, end_index=None):
     # Load existing data
     if os.path.exists(output_file):
+        # here we are going to have 3 safety nets, in case of column mismatch, parsing error or anything else. In all of these cases we are still creating a Dataframe with the right columns, after checking if the outputfile have them
         try:
-            df_output = pd.read_csv(output_file, sep="\t", on_bad_lines="skip")
+            df_output = pd.read_csv(
+                output_file, sep="\t", on_bad_lines="skip"
+            )  # on bad lines skip (just in case for the code not to crash)
+            # in the following line we use a set instead of a list because the order of the list matters, and in this comparison we only care that these 4 lables are in the data frame. Also, a set automatically drops duplicates (even if here is not of much importance, and runs in linear time, because they are implemented using a hash table)
             if set(df_output.columns) != {
                 "Initial Region URL",
                 "Crag URL",
@@ -139,7 +144,7 @@ def process_urls(start_index=None, end_index=None):
             ]
         )
 
-    # Load URLs to scrape
+    # Load URLs to scrape from input file
     try:
         df = pd.read_csv(csv_combined, sep="\t", on_bad_lines="skip")
     except pd.errors.ParserError as e:
@@ -158,8 +163,11 @@ def process_urls(start_index=None, end_index=None):
         row = df.iloc[index]
         initial_region_url = row["Initial Region URL"]
         crag_url = row["Crag URL"]
+        # the following line is checking for duplicates in the df_output column "Crag URL". If there is a line that exists with the same crag url, it returns that whole line (series), so that we will later check its other columns
+        # to explain the usage, we get a Series when we use df["name of the columm"]. But in this case, we dont want to check a column and if it matches the crag_url (it will return True or False). We want to have a Series in which the df_output column["Crag URL"] matches crag_url
         existing_row = df_output[df_output["Crag URL"] == crag_url]
 
+        # if the row of the url exists and has a value, if its 'unknown' in any of the other columns (coordinates or name), re-scrape it, if not, pass it, because the url is already scraped
         if not existing_row.empty:
             if (
                 existing_row.iloc[0]["Latitude"] == "unknown"
@@ -171,11 +179,13 @@ def process_urls(start_index=None, end_index=None):
                 )
             else:
                 print(f"Skipping already processed URL: {crag_url}")
-                continue
+                continue  # this will keep from calling the scrape function that is under here
 
         latitude, longitude, region_name = scrape_coordinates_and_region_name(
             crag_url, proxies
         )
+
+        # if there was no data in the df_output, we are creating a whole dictionary to append to the df
         updated_data_dict[crag_url] = {
             "Initial Region URL": initial_region_url,
             "Region Name": region_name,
@@ -186,10 +196,10 @@ def process_urls(start_index=None, end_index=None):
         print(
             f"Processed {crag_url}. Latitude: {latitude}, Longitude: {longitude}, Region Name: {region_name}"
         )
-
+    # after the for loop has run, this dictionary is accumulating the information of the scraped urls that have not been scraped before, and that have to there for be appended to the dataframe
     if updated_data_dict:
         # Convert the updated data dictionary into a DataFrame
-        new_df = pd.DataFrame.from_dict(updated_data_dict, orient="index").reset_index()
+        new_df = pd.DataFrame.from_dict(updated_data_dict).reset_index()
         new_df.columns = [
             "Crag URL",
             "Initial Region URL",
@@ -198,42 +208,8 @@ def process_urls(start_index=None, end_index=None):
             "Longitude",
         ]
 
-        # Find URLs that are completely new (i.e., not present in df_output)
-        new_entries_df = new_df[~new_df["Crag URL"].isin(df_output["Crag URL"])]
-
         # Append new URLs to the existing df_output
-        if not new_entries_df.empty:
-            df_output = pd.concat([df_output, new_entries_df], ignore_index=True)
-
-        # Now, update existing rows where coordinates or region name are "unknown"
-        df_output = pd.merge(
-            df_output, new_df, on="Crag URL", how="left", suffixes=("", "_new")
-        )
-
-        # Ensure "Initial Region URL", "Region Name", "Latitude", and "Longitude" are updated correctly
-        df_output["Initial Region URL"] = df_output[
-            "Initial Region URL_new"
-        ].combine_first(df_output["Initial Region URL"])
-        df_output["Region Name"] = df_output["Region Name_new"].combine_first(
-            df_output["Region Name"]
-        )
-        df_output["Latitude"] = df_output["Latitude_new"].combine_first(
-            df_output["Latitude"]
-        )
-        df_output["Longitude"] = df_output["Longitude_new"].combine_first(
-            df_output["Longitude"]
-        )
-
-        # Drop temporary "_new" columns used for merging
-        df_output.drop(
-            columns=[
-                "Initial Region URL_new",
-                "Region Name_new",
-                "Latitude_new",
-                "Longitude_new",
-            ],
-            inplace=True,
-        )
+        df_output = pd.concat([df_output, new_df], ignore_index=True)
 
         # Save updated DataFrame to CSV
         df_output.to_csv(output_file, index=False, sep="\t")
