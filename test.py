@@ -1,38 +1,25 @@
+# entorno de test para no sobrecargar las requests de ORS y IPinfo
 from dotenv import load_dotenv
 import os
+import requests
+import mysql.connector
+import time
 
 load_dotenv(dotenv_path=".climbproject\.env")
 
-api_key = os.getenv("API_KEY")
+dbpssw = os.getenv("DB_KEY")
 
-import requests
-
-mostoles = (40.3231228, -3.8882308)
-sharma = (40.4377515, -3.6250799)
-
-parameters = {
-    "api_key": api_key,
-    "start": "{},{}".format(mostoles[1], mostoles[0]),
-    "end": "{},{}".format(sharma[1], sharma[0]),
-}
-
-response = requests.get(
-    "https://api.openrouteservice.org/v2/directions/driving-car", params=parameters
+mydb = mysql.connector.connect(
+    host="localhost", user="root", passwd=dbpssw, database="meteoclimb"
 )
 
-if response.status_code == 200:
-    print("Request successful.")
-    data = response.json()
-else:
-    print("Request failed.")
+mycursor = mydb.cursor()
 
-data = response.json()
+mycursor.execute(
+    "SELECT latitude,longitude FROM meteoclimb.crag_coords WHERE region_name = 'Andalucía';"
+)
 
-summary = data["features"][0]["properties"]["summary"]
-print(summary)
+result = mycursor.fetchall()
 
-duration = summary["duration"]
-print(duration / 60)
-
-distance = summary["distance"]
-print(distance / 1000)
+print(result)
+print(type(result))
