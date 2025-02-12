@@ -3,6 +3,8 @@ import os
 import requests
 import mysql.connector
 import time
+import numpy as np
+import plotly.express as px
 
 load_dotenv(dotenv_path=".climbproject\.env")
 
@@ -20,19 +22,50 @@ ccaas = []
 input_ccaa = input("Por favor, seleccione una CCAA: ")
 ccaas.append(input_ccaa)
 while True:
-    input_si_no = input("¿Quiere elegir otra CCAA, además de la anterior?")
+    input_si_no = input("¿Quiere elegir otra CCAA, además de la anterior? ")
     if input_si_no.lower() in ("sí", "si"):
         input_otra_ccaa = input("Por favor, seleccione otra CCAA: ")
         ccaas.append(input_otra_ccaa)
     if input_si_no.lower() == "no":
         break
 
-input_km = input(
-    "Por favor, introduzca el máximo de kilometros que se quiere desplazar: "
-)
+while True:
+    filter_input = input(
+        "Do you want to input a max kilometer range ('km'), a max driving time range ('min'), or both?: \n"
+    )
+    if filter_input.lower() == "km":
+        input_km = int(
+            input(
+                "Por favor, introduzca el máximo de kilometros que se quiere desplazar: "
+            )
+        )
+        mins = False
+        km = True
+    elif filter_input.lower() == "min":
+        input_min = int(
+            input(
+                "Por favor, introduzca el máximo de minutos que se quiere desplazar: "
+            )
+        )
+        km = False
+        mins = True
+    else:
+        input_km = int(
+            input(
+                "Por favor, introduzca el máximo de kilometros que se quiere desplazar: "
+            )
+        )
+        input_min = int(
+            input(
+                "Por favor, introduzca el máximo de minutos que se quiere desplazar: "
+            )
+        )
+        km = True
+        mins = True
+    break
 
 if len(ccaas) == 1:
-    select_statement = f"SELECT region_name, crag_name, latitude,longitude FROM meteoclimb.crag_coords WHERE region_name = '{ccaas}';"
+    select_statement = f"SELECT region_name, crag_name, latitude,longitude FROM meteoclimb.crag_coords WHERE region_name = '{input_ccaa}';"
 else:
     count = len(ccaas)
     print(count)
@@ -47,7 +80,7 @@ mycursor.execute(select_statement)
 
 # this returns a list with the coordinates of the selected crag/s
 result = mycursor.fetchall()
-print(result)
+# print(result)
 counter = 0
 crags_list = []
 crags_dict = {"reg": [], "crg": [], "lat": [], "lon": []}
@@ -66,13 +99,41 @@ response = requests.get("https://ipinfo.io/json")
 mydata = response.json()
 myloc = mydata["loc"].split(",")
 
-
-# myloc = (myloc[0], myloc[1])
 coords = crags_list
+
+# earth radius in km
+R = 6371
+
+
+def deg_to_rad(degrees):
+    return degrees * (np.pi / 180)
+
+
+# function to calculate distance (1 or 2 could correspond to either of the locations)
+def dist(lat1, lon1, lat2, lon2):
+
+    # d stands for 'difference' in lat and in lon
+    d_lat = deg_to_rad(lat2 - lat1)
+    d_lon = deg_to_rad(lon2 - lon1)
+    a = (
+        np.sin(d_lat / 2) ** 2
+        + np.cos(deg_to_rad(lat1)) * np.cos(deg_to_rad(lat2)) * np.sin(d_lon / 2) ** 2
+    )
+    c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
+    return R * c
 
 
 def main():
-    delay = 1.5
+    delay = 2
+
+    for coord in coords:
+        coord_checked = dist(
+            float(myloc[0]), float(myloc[1]), float(coord["lat"]), float(coord["lon"])
+        )
+        if int(coord_checked) > input_km:
+            coords.remove(coord)
+            print(f"Lineal distance out of range already, {coord['crg']} removed.")
+
     for coord in coords:
         print(f"Region name: {coord['reg']}")
         print(f"Crag name: {coord['crg']}")
@@ -105,13 +166,39 @@ def distance_time_check():
     # print(summary)
 
     distance = summary["distance"] / 1000
-    if distance < int(input_km):
-        print(f"Distance in km: {int(distance)}")
-        duration = summary["duration"]
-        print(f"Duration in minutes: {int(duration / 60)}\n")
-    else:
-        print("This crag is out of the range.\n")
+    duration = summary["duration"] / 60
+
+    if mins == False:
+        if distance < input_km:
+            print(f"This crag is in your distance range: {int(distance)} km.")
+
+        else:
+            print("The crag is out of your distance range.")
+
+    if km == False:
+        if duration < input_min:
+            print(f"This crag is in your driving time range: {int(duration)} min.\n")
+        else:
+            print("The crag is out of your driving time range.\n")
+
+    if km == True and mins == True:
+        if distance < input_km:
+            print(f"This crag is in your distance range: {int(distance)} km.")
+            if duration < input_min:
+                print(
+                    f"The crag is also in your driving time range: {int(duration)} min.\n"
+                )
+            else:
+                print("The crag is out of your driving time range.\n")
+        else:
+            print("This crag is out of your distance range.")
+            if duration < input_min:
+                print(
+                    f"But it is within your driving time range: {int(duration)} min.\n"
+                )
+            else:
+                print("The crag is also out of your driving time range.\n")
 
 
-# if __name__ == "__main__":
-#     main()
+if __name__ == "__main__":
+    main()
