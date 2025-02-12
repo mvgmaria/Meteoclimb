@@ -123,8 +123,10 @@ def dist(lat1, lon1, lat2, lon2):
     return R * c
 
 
+delay = 2
+
+
 def main():
-    delay = 2
 
     if km == True:
         for coord_ in coords:
@@ -146,7 +148,7 @@ def main():
         parameters = {
             "api_key": api_key,
             "start": f"{str(myloc[1])},{str(myloc[0])}",
-            "end": f'{str(coord["lon"])},{str(coord["lat"])}',
+            "end": f'{str(coord["lon"])[:-6]},{str(coord["lat"])[:-6]}',
         }
 
         distance_time_check(parameters)
@@ -159,23 +161,31 @@ def distance_time_check(parameters):
         "https://api.openrouteservice.org/v2/directions/driving-car", params=parameters
     )
 
-    print(response.status_code)
     if response.status_code == 200:
         print("Request successful.")
-        data = response.json()
-    else:
-        print("Request failed. Retrying...")
-        parameters = {
-            "api_key": api_key,
-            "start": f"{str(myloc[1])},{str(myloc[0])}",
-            "end": f'{str(coord["lon"])[:-6]},{str(coord["lat"])[:-6]}',
-        }
 
-        response = requests.get(
-            "https://api.openrouteservice.org/v2/directions/driving-car",
-            params=parameters,
-        )
-        print(response.status_code)
+    else:
+        shift = 0.01
+        while True:
+            print("Request failed. Retrying...")
+            newlon = float(str(coord["lon"])[:-6]) + shift
+            newlat = float(str(coord["lat"])[:-6]) + shift
+            parameters = {
+                "api_key": api_key,
+                "start": f"{str(myloc[1])},{str(myloc[0])}",
+                "end": f"{str(newlon)},{str(newlat)}",
+            }
+
+            response = requests.get(
+                "https://api.openrouteservice.org/v2/directions/driving-car",
+                params=parameters,
+            )
+            print(response.status_code)
+            if response.status_code == 404:
+                shift += 0.01  # can be adapted if the search is bigger
+                time.sleep(delay)
+            else:
+                break
 
     data = response.json()
 
