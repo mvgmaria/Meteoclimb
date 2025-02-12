@@ -126,39 +126,56 @@ def dist(lat1, lon1, lat2, lon2):
 def main():
     delay = 2
 
-    for coord in coords:
-        coord_checked = dist(
-            float(myloc[0]), float(myloc[1]), float(coord["lat"]), float(coord["lon"])
-        )
-        if int(coord_checked) > input_km:
-            coords.remove(coord)
-            print(f"Lineal distance out of range already, {coord['crg']} removed.")
+    if km == True:
+        for coord_ in coords:
+            coord_checked = dist(
+                float(myloc[0]),
+                float(myloc[1]),
+                float(coord_["lat"]),
+                float(coord_["lon"]),
+            )
+            if int(coord_checked) > input_km:
+                coords.remove(coord_)
+                print(f"Lineal distance out of range already, {coord_['crg']} removed.")
 
+    global coord
     for coord in coords:
         print(f"Region name: {coord['reg']}")
         print(f"Crag name: {coord['crg']}")
-        global parameters
+        # global parameters
         parameters = {
             "api_key": api_key,
             "start": f"{str(myloc[1])},{str(myloc[0])}",
             "end": f'{str(coord["lon"])},{str(coord["lat"])}',
         }
 
-        distance_time_check()
+        distance_time_check(parameters)
         time.sleep(delay)
 
 
-def distance_time_check():
+def distance_time_check(parameters):
 
     response = requests.get(
         "https://api.openrouteservice.org/v2/directions/driving-car", params=parameters
     )
 
+    print(response.status_code)
     if response.status_code == 200:
         print("Request successful.")
         data = response.json()
     else:
-        print("Request failed.")
+        print("Request failed. Retrying...")
+        parameters = {
+            "api_key": api_key,
+            "start": f"{str(myloc[1])},{str(myloc[0])}",
+            "end": f'{str(coord["lon"])[:-6]},{str(coord["lat"])[:-6]}',
+        }
+
+        response = requests.get(
+            "https://api.openrouteservice.org/v2/directions/driving-car",
+            params=parameters,
+        )
+        print(response.status_code)
 
     data = response.json()
 
