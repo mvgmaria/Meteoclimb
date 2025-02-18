@@ -125,10 +125,13 @@ def dist(lat1, lon1, lat2, lon2):
 
 delay = 2
 
+skipped_crags = 0
+
 
 def main():
 
     if km == True:
+        global skipped_crags
         for coord_ in coords:
             coord_checked = dist(
                 float(myloc[0]),
@@ -139,6 +142,7 @@ def main():
             if int(coord_checked) > input_km:
                 coords.remove(coord_)
                 print(f"Lineal distance out of range already, {coord_['crg']} removed.")
+                skipped_crags = skipped_crags + 1
 
     global coord
     for coord in coords:
@@ -153,6 +157,7 @@ def main():
 
         distance_time_check(parameters)
         time.sleep(delay)
+    print(f"Skipped crags (out of lineal range): {skipped_crags}")
 
 
 def distance_time_check(parameters):
@@ -182,7 +187,7 @@ def distance_time_check(parameters):
             )
             print(response.status_code)
             if response.status_code == 404:
-                shift += 0.01  # can be adapted if the search is bigger
+                shift += 0.03  # can be adapted if the search is bigger
                 time.sleep(delay)
             else:
                 break
