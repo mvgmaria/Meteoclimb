@@ -4,7 +4,6 @@ import requests
 import mysql.connector
 import time
 import numpy as np
-import plotly.express as px
 
 load_dotenv(dotenv_path=".climbproject\.env")
 
@@ -31,7 +30,7 @@ while True:
 
 while True:
     filter_input = input(
-        "Do you want to input a max kilometer range ('km'), a max driving time range ('min'), or both?: \n"
+        "Quiere utilizar un rango máximo de kilómetros ('km'), un rango máximo de minutos ('min'), o los dos?: \n"
     )
     if filter_input.lower() == "km":
         input_km = int(
@@ -65,7 +64,10 @@ while True:
     break
 
 if len(ccaas) == 1:
-    select_statement = f"SELECT region_name, crag_name, latitude,longitude FROM meteoclimb.crag_coords WHERE region_name = '{input_ccaa}';"
+    select_statement = (
+        "SELECT region_name, crag_name, latitude,longitude FROM meteoclimb.crag_coords WHERE region_name = ?;",
+        input_ccaa,
+    )
 else:
     count = len(ccaas)
     print(count)
@@ -73,7 +75,10 @@ else:
     print(f_str)
     ff_str = f_str.replace(",", " or region_name =", count - 1)
     print(ff_str)
-    select_statement = f"SELECT region_name, crag_name, latitude,longitude FROM meteoclimb.crag_coords WHERE region_name = {ff_str};"
+    select_statement = (
+        "SELECT region_name, crag_name, latitude,longitude FROM meteoclimb.crag_coords WHERE region_name = ?;",
+        ff_str,
+    )
     print(select_statement)
 
 mycursor.execute(select_statement)
