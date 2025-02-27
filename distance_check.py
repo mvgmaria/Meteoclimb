@@ -4,6 +4,7 @@ import requests
 import mysql.connector
 import time
 import numpy as np
+from get_weather import get_weather
 
 load_dotenv(dotenv_path=".climbproject\.env")
 
@@ -64,10 +65,7 @@ while True:
     break
 
 if len(ccaas) == 1:
-    select_statement = (
-        "SELECT region_name, crag_name, latitude,longitude FROM meteoclimb.crag_coords WHERE region_name = ?;",
-        input_ccaa,
-    )
+    select_statement = f"SELECT region_name, crag_name, latitude,longitude FROM meteoclimb.crag_coords WHERE region_name = '{input_ccaa}';"
 else:
     count = len(ccaas)
     print(count)
@@ -75,11 +73,7 @@ else:
     print(f_str)
     ff_str = f_str.replace(",", " or region_name =", count - 1)
     print(ff_str)
-    select_statement = (
-        "SELECT region_name, crag_name, latitude,longitude FROM meteoclimb.crag_coords WHERE region_name = ?;",
-        ff_str,
-    )
-    print(select_statement)
+    select_statement = f"SELECT region_name, crag_name, latitude,longitude FROM meteoclimb.crag_coords WHERE region_name = {ff_str};"
 
 mycursor.execute(select_statement)
 
@@ -150,9 +144,10 @@ def main():
                 skipped_crags = skipped_crags + 1
 
     global coord
+    date = int(input("Introduzca en cuántos días va a viajar: "))
     for coord in coords:
         print(f"Region name: {coord['reg']}")
-        print(f"Crag name: {coord['crg']}")
+        print(f"Crag name: {coord['crg']}\n")
         # global parameters
         parameters = {
             "api_key": api_key,
@@ -162,6 +157,8 @@ def main():
 
         distance_time_check(parameters)
         time.sleep(delay)
+
+        get_weather(str(coord["lat"]), str(coord["lon"]), date)
     print(f"Skipped crags (out of lineal range): {skipped_crags}")
 
 
@@ -172,12 +169,12 @@ def distance_time_check(parameters):
     )
 
     if response.status_code == 200:
-        print("Request successful.")
+        print("Request successful.\n")
 
     else:
         shift = 0.01
         while True:
-            print("Request failed. Retrying...")
+            print("Request failed. Retrying...\n")
             newlon = float(str(coord["lon"])[:-6]) + shift
             newlat = float(str(coord["lat"])[:-6]) + shift
             parameters = {
@@ -190,7 +187,7 @@ def distance_time_check(parameters):
                 "https://api.openrouteservice.org/v2/directions/driving-car",
                 params=parameters,
             )
-            print(response.status_code)
+            # print(response.status_code)
             if response.status_code == 404:
                 shift += 0.03  # can be adapted if the search is bigger
                 time.sleep(delay)

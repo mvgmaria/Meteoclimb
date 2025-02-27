@@ -8,30 +8,45 @@ load_dotenv(dotenv_path=".climbproject\.env")
 
 
 # enables the env variables so we can retrieve them
-def get_weather(lat, lon):
+def get_weather(lat, lon, date):
 
-    date = input(
-        "Introduzca qué día va a escalar: "
-    )  # 21 (its implicit that this day is from the current month or the one immediately after, but beware of possible bugs in the last days of the month, check that cases"
-    cnt = (
-        int(date) - datetime.now().day
-    )  # i would have to check the format of the datetime function
-    print(cnt)
+    timestamps_cons = 8
 
-    request_url = f'https://api.openweathermap.org/data/2.5/forecast?lat={lat}&lon={lon}&appid={os.getenv("API_KEY_W")}'
+    timestamp_times = [3, 6, 9, 12, 15, 18, 21, 24]
+    for hour in timestamp_times:
+        if datetime.now().hour < hour:
+            next_timestamp = timestamp_times.index(hour)
+            break
+
+    if next_timestamp < 7:
+        timestamps_needed = timestamps_cons * date + (
+            timestamps_cons - (next_timestamp + 1)
+        )
+
+    else:
+        timestamps_needed = timestamps_cons * date
+
+    if timestamps_needed < 40:
+        request_url = f'https://api.openweathermap.org/data/2.5/forecast?lat={lat}&lon={lon}&appid={os.getenv("API_KEY_W")}&units=metric&cnt={timestamps_needed}'
+    else:
+        request_url = f'https://api.openweathermap.org/data/2.5/forecast?lat={lat}&lon={lon}&appid={os.getenv("API_KEY_W")}&units=metric&cnt=40'
+    # with the parameter cnt im limiting the timestamps (every three hours)
 
     weather_data = requests.get(request_url).json()
 
-    pprint(weather_data)
+    # pprint(weather_data)
 
-    # print(f'\nCurrent Weather for {weather_data["name"]}.')
-    # print(f'\nThe temp is {weather_data["main"]["temp"]}.')
-    # print(
-    #     f'\nFeels like {weather_data["main"]["feels_like"]} and {weather_data["weather"][0]["description"]}.'
-    # )
+    for i in range(5, 0, -1):
+        print(
+            f'\nPara la fecha y hora {weather_data["list"][timestamps_needed-i]["dt_txt"]}, la sensación térmica es de {weather_data["list"][timestamps_needed-i]["main"]["feels_like"]} y la probabilidad de precipitación es de {weather_data["list"][timestamps_needed-i]["pop"]}%.'
+        )
+
+    # here, the 0 gets the first element of the list, so the first timestamp
+
+    print("\n")
 
 
 if __name__ == "__main__":
     get_weather(
-        40.3202739, -3.8796409
+        40.3202739, -3.8796409, 1
     )  # to make tests, remember i have to manually update the arguments in this line
