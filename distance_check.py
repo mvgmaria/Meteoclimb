@@ -3,6 +3,7 @@ import os
 import requests
 import mysql.connector
 import time
+from datetime import datetime
 import numpy as np
 from get_weather import get_weather
 
@@ -126,6 +127,9 @@ delay = 2
 
 skipped_crags = 0
 
+weather_api_counter = 0
+distance_api_counter = 0
+
 
 def main():
 
@@ -156,10 +160,13 @@ def main():
         }
 
         distance_time_check(parameters)
+        distance_api_counter = distance_api_counter + 1
         time.sleep(delay)
-
-        get_weather(str(coord["lat"]), str(coord["lon"]), date)
+        if distance_range != False or time_range != False:
+            get_weather(str(coord["lat"]), str(coord["lon"]), date)
+            weather_api_counter = weather_api_counter + 4
     print(f"Skipped crags (out of lineal range): {skipped_crags}")
+    counter_to_log(distance_api_counter, weather_api_counter)
 
 
 def distance_time_check(parameters):
@@ -190,6 +197,7 @@ def distance_time_check(parameters):
             # print(response.status_code)
             if response.status_code == 404:
                 shift += 0.03  # can be adapted if the search is bigger
+                distance_api_counter = distance_api_counter + 1
                 time.sleep(delay)
             else:
                 break
@@ -207,12 +215,16 @@ def distance_time_check(parameters):
             print(f"This crag is in your distance range: {int(distance)} km.")
 
         else:
+            global distance_range
+            distance_range = False
             print("The crag is out of your distance range.")
 
     if km == False:
         if duration < input_min:
             print(f"This crag is in your driving time range: {int(duration)} min.\n")
         else:
+            global time_range
+            time_range = False
             print("The crag is out of your driving time range.\n")
 
     if km == True and mins == True:
@@ -223,6 +235,7 @@ def distance_time_check(parameters):
                     f"The crag is also in your driving time range: {int(duration)} min.\n"
                 )
             else:
+                time_range = False
                 print("The crag is out of your driving time range.\n")
         else:
             print("This crag is out of your distance range.")
@@ -231,7 +244,19 @@ def distance_time_check(parameters):
                     f"But it is within your driving time range: {int(duration)} min.\n"
                 )
             else:
+                time_range = False
                 print("The crag is also out of your driving time range.\n")
+
+
+def counter_to_log(distance_counter, weather_counter):
+
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    log_path = os.path.join(current_dir, "api_log.txt")
+
+    f = open(log_path, "x, a")
+    f.write(
+        f"Distance API counter: {distance_counter}. Weather API counter: {weather_counter} for the date: {datetime.now()}.\n"
+    )
 
 
 if __name__ == "__main__":
