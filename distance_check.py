@@ -129,12 +129,15 @@ skipped_crags = 0
 
 weather_api_counter = 0
 distance_api_counter = 0
+time_range = True
+distance_range = True
 
 
 def main():
 
     if km == True:
         global skipped_crags
+        coords_reduced = coords[:]
         for coord_ in coords:
             coord_checked = dist(
                 float(myloc[0]),
@@ -143,28 +146,43 @@ def main():
                 float(coord_["lon"]),
             )
             if int(coord_checked) > input_km:
-                coords.remove(coord_)
-                print(f"Lineal distance out of range already, {coord_['crg']} removed.")
+                coords_reduced.remove(coord_)
+                # print(f"Lineal distance out of range already, {coord_['crg']} removed.")
                 skipped_crags = skipped_crags + 1
 
     global coord
-    date = int(input("Introduzca en cuántos días va a viajar: "))
-    for coord in coords:
-        print(f"Region name: {coord['reg']}")
-        print(f"Crag name: {coord['crg']}\n")
-        # global parameters
-        parameters = {
-            "api_key": api_key,
-            "start": f"{str(myloc[1])},{str(myloc[0])}",
-            "end": f'{str(coord["lon"])[:-6]},{str(coord["lat"])[:-6]}',
-        }
+    if len(coords_reduced) > 0:
+        date = int(input("Introduzca en cuántos días va a viajar: "))
+        for coord in coords_reduced:
+            print(f"Region name: {coord['reg']}")
+            print(f"Crag name: {coord['crg']}\n")
+            # global parameters
+            parameters = {
+                "api_key": api_key,
+                "start": f"{str(myloc[1])},{str(myloc[0])}",
+                "end": f'{str(coord["lon"])[:-6]},{str(coord["lat"])[:-6]}',
+            }
 
-        distance_time_check(parameters)
-        distance_api_counter = distance_api_counter + 1
-        time.sleep(delay)
-        if distance_range != False or time_range != False:
-            get_weather(str(coord["lat"]), str(coord["lon"]), date)
-            weather_api_counter = weather_api_counter + 4
+            distance_time_check(parameters)
+            time.sleep(delay)
+            global distance_api_counter
+            global distance_range
+            global weather_api_counter
+            distance_api_counter += 1
+
+            if km == True and distance_range == True:
+                get_weather(str(coord["lat"]), str(coord["lon"]), date)
+                weather_api_counter = weather_api_counter + 4
+            if mins == True and time_range == True:
+                get_weather(str(coord["lat"]), str(coord["lon"]), date)
+                weather_api_counter = weather_api_counter + 4
+            if (
+                km == True
+                and mins == True
+                and (distance_range == True or time_range == True)
+            ):
+                get_weather(str(coord["lat"]), str(coord["lon"]), date)
+                weather_api_counter = weather_api_counter + 4
     print(f"Skipped crags (out of lineal range): {skipped_crags}")
     counter_to_log(distance_api_counter, weather_api_counter)
 
@@ -197,6 +215,7 @@ def distance_time_check(parameters):
             # print(response.status_code)
             if response.status_code == 404:
                 shift += 0.03  # can be adapted if the search is bigger
+                global distance_api_counter
                 distance_api_counter = distance_api_counter + 1
                 time.sleep(delay)
             else:
@@ -210,27 +229,33 @@ def distance_time_check(parameters):
     distance = summary["distance"] / 1000
     duration = summary["duration"] / 60
 
+    global distance_range
+    global time_range
+
     if mins == False:
         if distance < input_km:
+            distance_range = True
             print(f"This crag is in your distance range: {int(distance)} km.")
 
         else:
-            global distance_range
+
             distance_range = False
             print("The crag is out of your distance range.")
 
     if km == False:
         if duration < input_min:
+            time_range = True
             print(f"This crag is in your driving time range: {int(duration)} min.\n")
         else:
-            global time_range
             time_range = False
             print("The crag is out of your driving time range.\n")
 
     if km == True and mins == True:
         if distance < input_km:
+            distance_range = True
             print(f"This crag is in your distance range: {int(distance)} km.")
             if duration < input_min:
+                time_range = True
                 print(
                     f"The crag is also in your driving time range: {int(duration)} min.\n"
                 )
@@ -240,6 +265,7 @@ def distance_time_check(parameters):
         else:
             print("This crag is out of your distance range.")
             if duration < input_min:
+                time_range = True
                 print(
                     f"But it is within your driving time range: {int(duration)} min.\n"
                 )
@@ -253,10 +279,13 @@ def counter_to_log(distance_counter, weather_counter):
     current_dir = os.path.dirname(os.path.abspath(__file__))
     log_path = os.path.join(current_dir, "api_log.txt")
 
-    f = open(log_path, "x, a")
-    f.write(
-        f"Distance API counter: {distance_counter}. Weather API counter: {weather_counter} for the date: {datetime.now()}.\n"
-    )
+    if os.path.exists(log_path):
+        f = open(log_path, "a")
+        f.write(
+            f"Distance API counter: {distance_counter}. Weather API counter: {weather_counter} for the date: {datetime.now()}.\n"
+        )
+    else:
+        f = open(log_path, "w")
 
 
 if __name__ == "__main__":
