@@ -9,6 +9,8 @@ Features
 Current Development
 - The core functionality is already working in Python. I am currently developing the front-end to enhance user experience.
 
+--- 
+
 MeteoClimb es una herramienta diseñada para escaladores en España que les ayuda a encontrar zonas de escalada (escuelas) para sus próximos viajes, proporcionando también previsiones meteorológicas para dichas áreas.
 
 Características
