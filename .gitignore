@@ -2,10 +2,3 @@
 filetree.md
 Mysql_connect.py
 backupmeteoclimb270125.sql
-check_proxies.py
-get_coordinates.py
-get_crags_simpler_onebyone.py
-get_region_crag_names.py
-get_region_name_url.py
-get_regions_name_url.py
-valid_proxies.txt
