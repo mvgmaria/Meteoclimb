@@ -150,10 +150,44 @@ def main():
                 # print(f"Lineal distance out of range already, {coord_['crg']} removed.")
                 skipped_crags = skipped_crags + 1
 
-    global coord
-    if len(coords_reduced) > 0:
         date = int(input("Introduzca en cuántos días va a viajar: "))
-        for coord in coords_reduced:
+
+        global coord
+        if len(coords_reduced) > 0:
+
+            for coord in coords_reduced:
+                print(f"Region name: {coord['reg']}")
+                print(f"Crag name: {coord['crg']}\n")
+                # global parameters
+                parameters = {
+                    "api_key": api_key,
+                    "start": f"{str(myloc[1])},{str(myloc[0])}",
+                    "end": f'{str(coord["lon"])[:-6]},{str(coord["lat"])[:-6]}',
+                }
+
+                distance_time_check(parameters)
+                time.sleep(delay)
+                global distance_api_counter
+                global distance_range
+                global weather_api_counter
+                distance_api_counter += 1
+
+                if km == True and distance_range == True:
+                    get_weather(str(coord["lat"]), str(coord["lon"]), date)
+                    weather_api_counter = weather_api_counter + 4
+                if mins == True and time_range == True:
+                    get_weather(str(coord["lat"]), str(coord["lon"]), date)
+                    weather_api_counter = weather_api_counter + 4
+                if (
+                    km == True
+                    and mins == True
+                    and (distance_range == True or time_range == True)
+                ):
+                    get_weather(str(coord["lat"]), str(coord["lon"]), date)
+                    weather_api_counter = weather_api_counter + 4
+    else:
+        date = int(input("Introduzca en cuántos días va a viajar: "))
+        for coord in coords:
             print(f"Region name: {coord['reg']}")
             print(f"Crag name: {coord['crg']}\n")
             # global parameters
@@ -165,9 +199,6 @@ def main():
 
             distance_time_check(parameters)
             time.sleep(delay)
-            global distance_api_counter
-            global distance_range
-            global weather_api_counter
             distance_api_counter += 1
 
             if km == True and distance_range == True:
