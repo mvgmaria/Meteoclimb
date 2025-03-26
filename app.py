@@ -8,6 +8,7 @@ import numpy as np
 from get_weather import get_weather
 from flask_mysqldb import MySQL
 from flask import Flask, flash, jsonify, redirect, render_template, request, session
+import distance_check
 
 # Configure application
 app = Flask(__name__, template_folder="templates")
@@ -49,4 +50,6 @@ def indx():
 
 @app.route("/search", methods=["GET", "POST"])
 def index():
+    if request.method == "POST":
+        crags = request.get.form("region")
     return render_template("search.html")
