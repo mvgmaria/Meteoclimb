@@ -85,28 +85,35 @@ def index():
 
         coords = crags_list
 
-        # earth radius in km
-        R = 6371
+        km = False
+        mins = False
+
+        if request.form.get("distance") != "":
+            km = True
+        
+            # earth radius in km
+            R = 6371
+
+            def deg_to_rad(degrees):
+                return degrees * (np.pi / 180)
 
 
-        def deg_to_rad(degrees):
-            return degrees * (np.pi / 180)
+            # function to calculate distance (1 or 2 could correspond to either of the locations)
+            def dist(lat1, lon1, lat2, lon2):
 
+                # d stands for 'difference' in lat and in lon
+                d_lat = deg_to_rad(lat2 - lat1)
+                d_lon = deg_to_rad(lon2 - lon1)
+                a = (
+                    np.sin(d_lat / 2) ** 2
+                    + np.cos(deg_to_rad(lat1)) * np.cos(deg_to_rad(lat2)) * np.sin(d_lon / 2) ** 2
+                )
+                c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
+                return R * c
 
-        # function to calculate distance (1 or 2 could correspond to either of the locations)
-        def dist(lat1, lon1, lat2, lon2):
-
-            # d stands for 'difference' in lat and in lon
-            d_lat = deg_to_rad(lat2 - lat1)
-            d_lon = deg_to_rad(lon2 - lon1)
-            a = (
-                np.sin(d_lat / 2) ** 2
-                + np.cos(deg_to_rad(lat1)) * np.cos(deg_to_rad(lat2)) * np.sin(d_lon / 2) ** 2
-            )
-            c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
-            return R * c
-
-
+        if request.form.get("time") != "":
+            mins = True
+        
         delay = 2
 
         skipped_crags = 0
@@ -115,6 +122,7 @@ def index():
         distance_api_counter = 0
         time_range = True
         distance_range = True
+        
 
         distance_check.main()
 
