@@ -8,7 +8,7 @@ import numpy as np
 from get_weather import get_weather
 from flask_mysqldb import MySQL
 from flask import Flask, flash, jsonify, redirect, render_template, request, session
-import distance_check
+
 
 # Configure application
 app = Flask(__name__, template_folder="templates")
@@ -33,6 +33,10 @@ mydb = mysql.connector.connect(
 
 mycursor = mydb.cursor()
 
+load_dotenv(dotenv_path=".climbproject\.env")
+
+api_key = os.getenv("API_KEY")
+dbpssw = os.getenv("DB_KEY")
 
 # @app.after_request
 # def after_request(response):
@@ -50,16 +54,19 @@ def indx():
 
 @app.route("/search", methods=["GET", "POST"])
 def index():
+
+    ccaas = []
+
     if request.method == "POST":
-        if len(ccaas) == 1:
-            select_statement = f"SELECT region_name, crag_name, latitude,longitude FROM meteoclimb.crag_coords WHERE region_name = '{input_ccaa}';"
+        ccaas = request.form.get("region")
+        if "," not in ccaas:
+            select_statement = f"SELECT region_name, crag_name, latitude,longitude FROM meteoclimb.crag_coords WHERE region_name = '{ccaas}' LIMIT 2;"
         else:
-            ccaas = [request.get.form("region")]
             count = len(ccaas)
             f_str = str(ccaas)[1:-1]
             ff_str = f_str.replace(",", " or region_name =", count - 1)
-            select_statement = f"SELECT region_name, crag_name, latitude,longitude FROM meteoclimb.crag_coords WHERE region_name = {ff_str};"
-        
+            select_statement = f"SELECT region_name, crag_name, latitude,longitude FROM meteoclimb.crag_coords WHERE region_name = {ff_str} LIMIT 2;"
+
         mycursor.execute(select_statement)
 
         # this returns a list with the coordinates of the selected crag/s
@@ -90,13 +97,12 @@ def index():
 
         if request.form.get("distance") != "":
             km = True
-        
+
             # earth radius in km
             R = 6371
 
             def deg_to_rad(degrees):
                 return degrees * (np.pi / 180)
-
 
             # function to calculate distance (1 or 2 could correspond to either of the locations)
             def dist(lat1, lon1, lat2, lon2):
@@ -106,25 +112,287 @@ def index():
                 d_lon = deg_to_rad(lon2 - lon1)
                 a = (
                     np.sin(d_lat / 2) ** 2
-                    + np.cos(deg_to_rad(lat1)) * np.cos(deg_to_rad(lat2)) * np.sin(d_lon / 2) ** 2
+                    + np.cos(deg_to_rad(lat1))
+                    * np.cos(deg_to_rad(lat2))
+                    * np.sin(d_lon / 2) ** 2
                 )
                 c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
                 return R * c
 
         if request.form.get("time") != "":
             mins = True
-        
+
+        date = request.form.get("date")
+
         delay = 2
 
-        skipped_crags = 0
-
-        weather_api_counter = 0
-        distance_api_counter = 0
         time_range = True
         distance_range = True
-        
 
-        distance_check.main()
+        def main():
+            global crags
+            crags = []
+            if km == True:
+                print("km true")
 
+                coords_reduced = coords[:]
+                for coord_ in coords:
+                    print("coord checking")
+                    coord_checked = dist(
+                        float(myloc[0]),
+                        float(myloc[1]),
+                        float(coord_["lat"]),
+                        float(coord_["lon"]),
+                    )
+                    if int(coord_checked) > int(request.form.get("distance")):
+                        coords_reduced.remove(coord_)
+                        # print(f"Lineal distance out of range already, {coord_['crg']} removed.")
+
+                global coord
+                if len(coords_reduced) > 0:
+
+                    for coord in coords_reduced:
+                        print("coord searching")
+                        print(f"Region name: {coord['reg']}")
+                        print(f"Crag name: {coord['crg']}\n")
+                        # global parameters
+                        parameters = {
+                            "api_key": api_key,
+                            "start": f"{str(myloc[1])},{str(myloc[0])}",
+                            "end": f'{str(coord["lon"])[:-6]},{str(coord["lat"])[:-6]}',
+                        }
+
+                        distance_time_check(parameters)
+                        time.sleep(delay)
+                        global distance_range
+
+                        if km == True and distance_range == True:
+                            get_weather(str(coord["lat"]), str(coord["lon"]), date)
+                            print("Appending")
+                            crags.append(
+                                {
+                                    "region": coord["reg"],
+                                    "crag_name": coord["crg"],
+                                    "distance": distance,
+                                    "time": duration,
+                                    "weather": wdata,
+                                }
+                            )
+                        if mins == True and time_range == True:
+                            get_weather(str(coord["lat"]), str(coord["lon"]), date)
+                            print("Appending")
+                            crags.append(
+                                {
+                                    "region": coord["reg"],
+                                    "crag_name": coord["crg"],
+                                    "distance": distance,
+                                    "time": duration,
+                                    "weather": wdata,
+                                }
+                            )
+                        if (
+                            km == True
+                            and mins == True
+                            and (distance_range == True or time_range == True)
+                        ):
+                            get_weather(str(coord["lat"]), str(coord["lon"]), date)
+                            print("Appending")
+                            crags.append(
+                                {
+                                    "region": coord["reg"],
+                                    "crag_name": coord["crg"],
+                                    "distance": distance,
+                                    "time": duration,
+                                    "weather": wdata,
+                                }
+                            )
+            else:
+                for coord in coords:
+                    print(f"Region name: {coord['reg']}")
+                    print(f"Crag name: {coord['crg']}\n")
+
+                    # global parameters
+                    parameters = {
+                        "api_key": api_key,
+                        "start": f"{str(myloc[1])},{str(myloc[0])}",
+                        "end": f'{str(coord["lon"])[:-6]},{str(coord["lat"])[:-6]}',
+                    }
+
+                    distance_time_check(parameters)
+                    time.sleep(delay)
+
+                    if km == True and distance_range == True:
+                        get_weather(str(coord["lat"]), str(coord["lon"]), date)
+                        print("Appending")
+                        crags.append(
+                            {
+                                "region": coord["reg"],
+                                "crag_name": coord["crg"],
+                                "distance": distance,
+                                "time": duration,
+                                "weather": wdata,
+                            }
+                        )
+                    print(crags)
+                    if mins == True and time_range == True:
+                        get_weather(str(coord["lat"]), str(coord["lon"]), date)
+                        print("Appending")
+                        crags.append(
+                            {
+                                "region": coord["reg"],
+                                "crag_name": coord["crg"],
+                                "distance": distance,
+                                "time": duration,
+                                "weather": wdata,
+                            }
+                        )
+                    if (
+                        km == True
+                        and mins == True
+                        and (distance_range == True or time_range == True)
+                    ):
+                        get_weather(str(coord["lat"]), str(coord["lon"]), date)
+                        print("Appending")
+                        crags.append(
+                            {
+                                "region": coord["reg"],
+                                "crag_name": coord["crg"],
+                                "distance": distance,
+                                "time": duration,
+                                "weather": wdata,
+                            }
+                        )
+
+            print(f"dictionary: {crags}")
+            # print(f"Skipped crags (out of lineal range): {skipped_crags}")
+
+        def distance_time_check(parameters):
+
+            response = requests.get(
+                "https://api.openrouteservice.org/v2/directions/driving-car",
+                params=parameters,
+            )
+
+            if response.status_code == 200:
+                print("Request successful.\n")
+
+            else:
+                shift = 0.01
+                while True:
+                    print("Request failed. Retrying...\n")
+                    newlon = float(str(coord["lon"])[:-6]) + shift
+                    newlat = float(str(coord["lat"])[:-6]) + shift
+                    parameters = {
+                        "api_key": api_key,
+                        "start": f"{str(myloc[1])},{str(myloc[0])}",
+                        "end": f"{str(newlon)},{str(newlat)}",
+                    }
+
+                    response = requests.get(
+                        "https://api.openrouteservice.org/v2/directions/driving-car",
+                        params=parameters,
+                    )
+                    # print(response.status_code)
+                    if response.status_code == 404:
+                        shift += 0.03  # can be adapted if the search is bigger
+                        time.sleep(delay)
+                    else:
+                        break
+
+            data = response.json()
+
+            summary = data["features"][0]["properties"]["summary"]
+            # print(summary)
+
+            global distance
+            global duration
+
+            distance = summary["distance"] / 1000
+            duration = summary["duration"] / 60
+
+            global distance_range
+            global time_range
+
+            if mins == False:
+                if distance < int(request.form.get("distance")):
+                    distance_range = True
+                    print(f"This crag is in your distance range: {int(distance)} km.")
+                else:
+
+                    distance_range = False
+                    print("The crag is out of your distance range.")
+
+            if km == False:
+                if duration < int(request.form.get("time")):
+                    time_range = True
+                    print(
+                        f"This crag is in your driving time range: {int(duration)} min.\n"
+                    )
+                else:
+                    time_range = False
+                    print("The crag is out of your driving time range.\n")
+
+            if km == True and mins == True:
+                if distance < int(request.form.get("distance")):
+                    distance_range = True
+                    print(f"This crag is in your distance range: {int(distance)} km.")
+                    if duration < int(request.form.get("time")):
+                        time_range = True
+                        print(
+                            f"The crag is also in your driving time range: {int(duration)} min.\n"
+                        )
+                    else:
+                        time_range = False
+                        print("The crag is out of your driving time range.\n")
+                else:
+                    print("This crag is out of your distance range.")
+                    if duration < int(request.form.get("time")):
+                        time_range = True
+                        print(
+                            f"But it is within your driving time range: {int(duration)} min.\n"
+                        )
+                    else:
+                        time_range = False
+                        print("The crag is also out of your driving time range.\n")
+
+        def get_weather(lat, lon, date):
+            global wdata
+            timestamps_cons = 8
+
+            timestamp_times = [3, 6, 9, 12, 15, 18, 21, 24]
+            for hour in timestamp_times:
+                if datetime.now().hour < hour:
+                    next_timestamp = timestamp_times.index(hour)
+                    break
+
+            if next_timestamp < 7:
+                timestamps_needed = timestamps_cons * int(date) + (
+                    timestamps_cons - (next_timestamp + 1)
+                )
+
+            else:
+                timestamps_needed = timestamps_cons * date
+
+            if timestamps_needed < 40:
+                request_url = f'https://api.openweathermap.org/data/2.5/forecast?lat={lat}&lon={lon}&appid={os.getenv("API_KEY_W")}&units=metric&cnt={timestamps_needed}'
+            else:
+                request_url = f'https://api.openweathermap.org/data/2.5/forecast?lat={lat}&lon={lon}&appid={os.getenv("API_KEY_W")}&units=metric&cnt=40'
+            # with the parameter cnt im limiting the timestamps (every three hours)
+
+            weather_data = requests.get(request_url).json()
+
+            # pprint(weather_data)
+
+            for i in range(5, 0, -1):
+                wdata = f'Para la fecha y hora {weather_data["list"][timestamps_needed-i]["dt_txt"]}, la sensación térmica es de {weather_data["list"][timestamps_needed-i]["main"]["feels_like"]} y la probabilidad de precipitación es de {weather_data["list"][timestamps_needed-i]["pop"]}%.'
+                print(wdata)
+
+            # here, the 0 gets the first element of the list, so the first timestamp
+
+            print("\n")
+
+        main()
+
+        return render_template("crags.html", crags=crags)
 
     return render_template("search.html")

@@ -22,7 +22,7 @@
       <h2>Crag search</h2>
     </header>
     <div class="section">
-      <form>
+      <form action="/search" method="post">
         <h5>¿En qué region quieres escalar?</h5>
         <input
           type="text"
@@ -49,6 +49,16 @@
           name="time"
           autocomplete="off"
           placeholder="p.ej., 120"
+          min="0"
+        />
+
+        <h5>¿En cuántos días va a viajar?</h5>
+        <input
+          type="number"
+          id="date"
+          name="date"
+          autocomplete="off"
+          placeholder="máximo 5 días"
           min="0"
         />
 

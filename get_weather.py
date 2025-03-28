@@ -37,9 +37,8 @@ def get_weather(lat, lon, date):
     # pprint(weather_data)
 
     for i in range(5, 0, -1):
-        print(
-            f'\nPara la fecha y hora {weather_data["list"][timestamps_needed-i]["dt_txt"]}, la sensación térmica es de {weather_data["list"][timestamps_needed-i]["main"]["feels_like"]} y la probabilidad de precipitación es de {weather_data["list"][timestamps_needed-i]["pop"]}%.'
-        )
+        wdata = f'\nPara la fecha y hora {weather_data["list"][timestamps_needed-i]["dt_txt"]}, la sensación térmica es de {weather_data["list"][timestamps_needed-i]["main"]["feels_like"]} y la probabilidad de precipitación es de {weather_data["list"][timestamps_needed-i]["pop"]}%.'
+        print(wdata)
 
     # here, the 0 gets the first element of the list, so the first timestamp
 
