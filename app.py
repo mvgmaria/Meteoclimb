@@ -17,9 +17,9 @@ app = Flask(__name__, template_folder="templates")
 # Ensure templates are auto-reloaded
 app.config["TEMPLATES_AUTO_RELOAD"] = True
 
-# update the .demo_env with your own api_keys (they are all free for Open Route Service and Open Weather)
-# actualiza el archivo .demo_env con tus propias api_keys (son gratis para Open Route Service y Open Weather)
-load_dotenv(dotenv_path=".climbproject\\.demo_env")
+# update the path to your actual .env (already included in the .gitignore)
+# actualiza la ruta a tu archivo .env (ya incluido en el .gitignore)
+load_dotenv(dotenv_path=".demo_env")
 
 api_key = os.getenv("API_KEY")
 dbpssw = os.getenv("DB_KEY")
