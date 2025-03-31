@@ -1,0 +1,3 @@
+API_KEY="your openrouteservice api key"
+API_KEY_W="your open weather api key"
+DB_KEY="your database password - associated with test_crags.sql"

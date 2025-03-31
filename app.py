@@ -17,9 +17,16 @@ app = Flask(__name__, template_folder="templates")
 # Ensure templates are auto-reloaded
 app.config["TEMPLATES_AUTO_RELOAD"] = True
 
-load_dotenv(dotenv_path=".climbproject\.env")
+# update the .demo_env with your own api_keys (they are all free for Open Route Service and Open Weather)
+# actualiza el archivo .demo_env con tus propias api_keys (son gratis para Open Route Service y Open Weather)
+load_dotenv(dotenv_path=".climbproject\\.demo_env")
 
+api_key = os.getenv("API_KEY")
 dbpssw = os.getenv("DB_KEY")
+
+
+# make sure you have created the database and table with the query from test_crags.sql
+# asegúrate de que has creado la base de datos y la tabla correspondiente con el query de test_crags.sql
 
 app.config["MYSQL_HOST"] = "localhost"
 app.config["MYSQL_USER"] = "root"
@@ -34,10 +41,6 @@ mydb = mysql.connector.connect(
 
 mycursor = mydb.cursor()
 
-load_dotenv(dotenv_path=".climbproject\.env")
-
-api_key = os.getenv("API_KEY")
-dbpssw = os.getenv("DB_KEY")
 
 # @app.after_request
 # def after_request(response):
@@ -62,12 +65,12 @@ def index():
         ccaas = request.form.get("region")
         if "," not in ccaas:
             ccaas = ccaas.strip()
-            select_statement = f"SELECT region_name, crag_name, latitude,longitude FROM meteoclimb.crag_coords WHERE region_name = '{ccaas}' LIMIT 3;"
+            select_statement = f"SELECT region_name, crag_name, latitude,longitude FROM meteoclimb.test_crags WHERE region_name = '{ccaas}' LIMIT 3;"
         else:
             new_ccaas = ccaas.replace(", ", ",")
             new_ccaas = ccaas.replace(",", "' OR region_name = '")
             new_ccaas = f"'{new_ccaas}'"
-            select_statement = f"SELECT region_name, crag_name, latitude,longitude FROM meteoclimb.crag_coords WHERE region_name = {new_ccaas} LIMIT 3;"
+            select_statement = f"SELECT region_name, crag_name, latitude,longitude FROM meteoclimb.test_crags WHERE region_name = {new_ccaas} LIMIT 3;"
             print(select_statement)
 
         mycursor.execute(select_statement)
