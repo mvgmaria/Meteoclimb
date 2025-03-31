@@ -39,7 +39,10 @@
             <td>{{ crag.crag_name }}</td>
             <td>{{ crag.distance }} km</td>
             <td>{{ crag.time }} min</td>
-            <td>{{ crag.weather }}</td>
+            <td>
+              {% for w in crag.weather %} {{ w }} <br />
+              {% endfor %}
+            </td>
           </tr>
           {% endfor %}
         </tbody>

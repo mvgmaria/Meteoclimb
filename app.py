@@ -8,6 +8,7 @@ import numpy as np
 from get_weather import get_weather
 from flask_mysqldb import MySQL
 from flask import Flask, flash, jsonify, redirect, render_template, request, session
+from pprint import pprint
 
 
 # Configure application
@@ -60,12 +61,12 @@ def index():
     if request.method == "POST":
         ccaas = request.form.get("region")
         if "," not in ccaas:
-            select_statement = f"SELECT region_name, crag_name, latitude,longitude FROM meteoclimb.crag_coords WHERE region_name = '{ccaas}' LIMIT 2;"
+            select_statement = f"SELECT region_name, crag_name, latitude,longitude FROM meteoclimb.crag_coords WHERE region_name = '{ccaas}' LIMIT 3;"
         else:
             count = len(ccaas)
             f_str = str(ccaas)[1:-1]
             ff_str = f_str.replace(",", " or region_name =", count - 1)
-            select_statement = f"SELECT region_name, crag_name, latitude,longitude FROM meteoclimb.crag_coords WHERE region_name = {ff_str} LIMIT 2;"
+            select_statement = f"SELECT region_name, crag_name, latitude,longitude FROM meteoclimb.crag_coords WHERE region_name = {ff_str} LIMIT 3;"
 
         mycursor.execute(select_statement)
 
@@ -166,34 +167,20 @@ def index():
                         time.sleep(delay)
                         global distance_range
 
-                        if km == True and distance_range == True:
+                        if mins == False and distance_range == True:
                             get_weather(str(coord["lat"]), str(coord["lon"]), date)
                             print("Appending")
                             crags.append(
                                 {
                                     "region": coord["reg"],
                                     "crag_name": coord["crg"],
-                                    "distance": distance,
-                                    "time": duration,
+                                    "distance": round(distance),
+                                    "time": round(duration),
                                     "weather": wdata,
                                 }
                             )
-                        if mins == True and time_range == True:
-                            get_weather(str(coord["lat"]), str(coord["lon"]), date)
-                            print("Appending")
-                            crags.append(
-                                {
-                                    "region": coord["reg"],
-                                    "crag_name": coord["crg"],
-                                    "distance": distance,
-                                    "time": duration,
-                                    "weather": wdata,
-                                }
-                            )
-                        if (
-                            km == True
-                            and mins == True
-                            and (distance_range == True or time_range == True)
+                        elif mins == True and (
+                            distance_range == True or time_range == True
                         ):
                             get_weather(str(coord["lat"]), str(coord["lon"]), date)
                             print("Appending")
@@ -201,12 +188,12 @@ def index():
                                 {
                                     "region": coord["reg"],
                                     "crag_name": coord["crg"],
-                                    "distance": distance,
-                                    "time": duration,
+                                    "distance": round(distance),
+                                    "time": round(duration),
                                     "weather": wdata,
                                 }
                             )
-            else:
+            elif km == False:
                 for coord in coords:
                     print(f"Region name: {coord['reg']}")
                     print(f"Crag name: {coord['crg']}\n")
@@ -221,19 +208,6 @@ def index():
                     distance_time_check(parameters)
                     time.sleep(delay)
 
-                    if km == True and distance_range == True:
-                        get_weather(str(coord["lat"]), str(coord["lon"]), date)
-                        print("Appending")
-                        crags.append(
-                            {
-                                "region": coord["reg"],
-                                "crag_name": coord["crg"],
-                                "distance": distance,
-                                "time": duration,
-                                "weather": wdata,
-                            }
-                        )
-                    print(crags)
                     if mins == True and time_range == True:
                         get_weather(str(coord["lat"]), str(coord["lon"]), date)
                         print("Appending")
@@ -241,24 +215,20 @@ def index():
                             {
                                 "region": coord["reg"],
                                 "crag_name": coord["crg"],
-                                "distance": distance,
-                                "time": duration,
+                                "distance": round(distance),
+                                "time": round(duration),
                                 "weather": wdata,
                             }
                         )
-                    if (
-                        km == True
-                        and mins == True
-                        and (distance_range == True or time_range == True)
-                    ):
+                    else:
                         get_weather(str(coord["lat"]), str(coord["lon"]), date)
                         print("Appending")
                         crags.append(
                             {
                                 "region": coord["reg"],
                                 "crag_name": coord["crg"],
-                                "distance": distance,
-                                "time": duration,
+                                "distance": round(distance),
+                                "time": round(duration),
                                 "weather": wdata,
                             }
                         )
@@ -312,8 +282,10 @@ def index():
 
             global distance_range
             global time_range
+            distance_range = False
+            time_range = False
 
-            if mins == False:
+            if mins == False and km == True:
                 if distance < int(request.form.get("distance")):
                     distance_range = True
                     print(f"This crag is in your distance range: {int(distance)} km.")
@@ -322,7 +294,7 @@ def index():
                     distance_range = False
                     print("The crag is out of your distance range.")
 
-            if km == False:
+            elif km == False and mins == True:
                 if duration < int(request.form.get("time")):
                     time_range = True
                     print(
@@ -332,7 +304,7 @@ def index():
                     time_range = False
                     print("The crag is out of your driving time range.\n")
 
-            if km == True and mins == True:
+            elif km == True and mins == True:
                 if distance < int(request.form.get("distance")):
                     distance_range = True
                     print(f"This crag is in your distance range: {int(distance)} km.")
@@ -354,6 +326,9 @@ def index():
                     else:
                         time_range = False
                         print("The crag is also out of your driving time range.\n")
+            elif mins == False and km == False:
+                distance_range = True
+                time_range = True
 
         def get_weather(lat, lon, date):
             global wdata
@@ -379,13 +354,13 @@ def index():
                 request_url = f'https://api.openweathermap.org/data/2.5/forecast?lat={lat}&lon={lon}&appid={os.getenv("API_KEY_W")}&units=metric&cnt=40'
             # with the parameter cnt im limiting the timestamps (every three hours)
 
+            wdata = []
+
             weather_data = requests.get(request_url).json()
-
-            # pprint(weather_data)
-
             for i in range(5, 0, -1):
-                wdata = f'Para la fecha y hora {weather_data["list"][timestamps_needed-i]["dt_txt"]}, la sensación térmica es de {weather_data["list"][timestamps_needed-i]["main"]["feels_like"]} y la probabilidad de precipitación es de {weather_data["list"][timestamps_needed-i]["pop"]}%.'
-                print(wdata)
+                wd = f'Para la fecha y hora {weather_data["list"][timestamps_needed-i]["dt_txt"]}, la sensación térmica es de {weather_data["list"][timestamps_needed-i]["main"]["feels_like"]} y la probabilidad de precipitación es de {weather_data["list"][timestamps_needed-i]["pop"]}%.'
+                wdata.append(wd)
+            print(wdata)
 
             # here, the 0 gets the first element of the list, so the first timestamp
 
