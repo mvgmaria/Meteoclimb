@@ -7,11 +7,11 @@ Features
 - Weather forecasts – Get detailed weather predictions for your selected crags in 3-hour increments.
 - Plan ahead – View forecasts for up to 5 days (to ensure accuracy).
 
-## Database Set Up
+### Database Set Up
 
 You can use the test_crags.sql provided by going into MySQL and running the query, so that you have a database names "meteoclimb" with a table named "test_crags"
 
-## Environment Variables Setup
+### Environment Variables Setup
 
 1. Copy the .demo_env file and rename it to .env.
 2. Open the .env file and add your API keys (both of them have sufficient free tiers) and database password:
@@ -30,11 +30,11 @@ Características
 - Previsión meteorológica – Obtén pronósticos detallados en intervalos de 3 horas para las escuelas seleccionadas.
 - Planifica con antelación – Consulta el clima hasta 5 días (para garantizar la precisión del pronóstico).
 
-## Configuración de la base de datos
+### Configuración de la base de datos
 
 Puedes usar la base de datos test_crags.sql ejecutando el query en MySQL, de tal manera que tengas una base de datos llamada "meteoclimb" con una tabla llamada "test_crags"
 
-## Configuración de las variables de entorno
+### Configuración de las variables de entorno
 
 1. Copia el archivo .demo_env y renómbralo a .env.
 2. Abre el archivo .env y añade tus API keys (las dos tienen planes gratuitos con margen suficiente) y clave de tu base de datos:
