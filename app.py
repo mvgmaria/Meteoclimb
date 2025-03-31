@@ -61,12 +61,14 @@ def index():
     if request.method == "POST":
         ccaas = request.form.get("region")
         if "," not in ccaas:
+            ccaas = ccaas.strip()
             select_statement = f"SELECT region_name, crag_name, latitude,longitude FROM meteoclimb.crag_coords WHERE region_name = '{ccaas}' LIMIT 3;"
         else:
-            count = len(ccaas)
-            f_str = str(ccaas)[1:-1]
-            ff_str = f_str.replace(",", " or region_name =", count - 1)
-            select_statement = f"SELECT region_name, crag_name, latitude,longitude FROM meteoclimb.crag_coords WHERE region_name = {ff_str} LIMIT 3;"
+            new_ccaas = ccaas.replace(", ", ",")
+            new_ccaas = ccaas.replace(",", "' OR region_name = '")
+            new_ccaas = f"'{new_ccaas}'"
+            select_statement = f"SELECT region_name, crag_name, latitude,longitude FROM meteoclimb.crag_coords WHERE region_name = {new_ccaas} LIMIT 3;"
+            print(select_statement)
 
         mycursor.execute(select_statement)
 
@@ -134,11 +136,9 @@ def index():
             global crags
             crags = []
             if km == True:
-                print("km true")
 
                 coords_reduced = coords[:]
                 for coord_ in coords:
-                    print("coord checking")
                     coord_checked = dist(
                         float(myloc[0]),
                         float(myloc[1]),
