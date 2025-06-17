@@ -36,7 +36,7 @@ app.config["MYSQL_DB"] = "flask"
 db = MySQL(app)
 
 mydb = mysql.connector.connect(
-    host="localhost", user="root", passwd=dbpssw, database="meteoclimb"
+    host="localhost", user="root", passwd=dbpssw, database="test_crags"
 )
 
 mycursor = mydb.cursor()
